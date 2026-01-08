@@ -267,6 +267,7 @@ void Server::setup_events_modifications() {
         log::info("\n[LSP] <<< TextDocument DidSave");
         std::filesystem::path file = params.textDocument.uri.path();
         if(get_file_type(file) == FileType::ConfigFile) {
+            compile.reset();
             reload_workspace();
             return;
         }
