@@ -10,7 +10,7 @@
 #include "artic/locator.h"
 
 #ifdef ENABLE_LSP
-#include "artic/ls/server.h"
+#include "server.h"
 #endif
 
 #include <thorin/world.h>
