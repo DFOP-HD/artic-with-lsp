@@ -31,9 +31,7 @@ if (WIN32)
 endif ()
 set(COLORIZE ${COLOR_TTY_AVAILABLE} CACHE BOOL "Set to TRUE to enable colorized output. Requires an ANSI compliant terminal.")
 
-
 find_package(Thorin REQUIRED)
-find_package(nlohmann_json 3.2.0 REQUIRED)
 
 add_subdirectory(src)
 if (BUILD_TESTING)

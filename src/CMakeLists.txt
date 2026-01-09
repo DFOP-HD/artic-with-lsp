@@ -34,56 +34,14 @@ target_compile_definitions(libartic PRIVATE -DARTIC_EXPORT)
 if (${COLORIZE})
     target_compile_definitions(libartic PUBLIC -DCOLORIZE)
 endif()
+target_compile_options(libartic PRIVATE -Wno-deprecated-declarations)
 
 add_executable(artic main.cpp)
 set_target_properties(artic PROPERTIES CXX_STANDARD 20)
-
-target_compile_options(artic PRIVATE -Wno-deprecated-declarations)
-target_compile_options(libartic PRIVATE -Wno-deprecated-declarations)
-
 target_compile_definitions(artic PUBLIC -DARTIC_VERSION_MAJOR=${PROJECT_VERSION_MAJOR} -DARTIC_VERSION_MINOR=${PROJECT_VERSION_MINOR})
 target_link_libraries(artic PUBLIC libartic)
 
-# LSP support
-option(ARTIC_BUILD_LSP "Build Artic with Language Server Protocol support" ON)
-
-if(ARTIC_BUILD_LSP)
-    # Add LSP source files
-    target_sources(artic PRIVATE
-        ls/server.cpp
-        ls/workspace.cpp
-        ls/crash.cpp
-        ls/compile.cpp
-        ls/config.cpp
-    )
-    
-    # Include LSP framework headers
-    target_include_directories(artic PRIVATE
-        ../lsp-framework  # For lsp/ includes
-        ../lsp-framework/build/generated  # For generated messages.h and types.h
-    )
-    
-    # Link with LSP framework library
-    target_link_libraries(artic PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/../lsp-framework/build/liblsp.a
-    )
-    
-    # Enable LSP compilation
-    target_compile_definitions(artic PRIVATE 
-        ENABLE_LSP=1
-    )
-
-    set_target_properties(artic PROPERTIES
-        BUILD_RPATH "$ORIGIN/../lib"
-        INSTALL_RPATH "$ORIGIN/../lib"
-    )
-    target_link_libraries(artic PUBLIC nlohmann_json::nlohmann_json)
-
-    # target_compile_options(libartic PRIVATE -fsanitize=address)
-    # target_link_libraries(libartic PRIVATE -fsanitize=address)
-    # target_compile_options(artic PRIVATE -fsanitize=address)
-    # target_link_libraries(artic PRIVATE -fsanitize=address)
-endif()
+option(ARTIC_LSP "Build Artic with Language Server support" ON)
 
 if (Thorin_HAS_JSON_SUPPORT)
     target_compile_definitions(artic PUBLIC -DENABLE_JSON)
