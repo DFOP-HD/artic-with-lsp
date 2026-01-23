@@ -1,7 +1,6 @@
 #ifndef ARTIC_LOG_H
 #define ARTIC_LOG_H
 
-#include <fmt/core.h>
 #include <iostream>
 #include <cstring>
 #include <cassert>
