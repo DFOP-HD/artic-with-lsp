@@ -45,12 +45,6 @@ set_target_properties(artic PROPERTIES CXX_STANDARD 20)
 target_compile_definitions(artic PUBLIC -DARTIC_VERSION_MAJOR=${PROJECT_VERSION_MAJOR} -DARTIC_VERSION_MINOR=${PROJECT_VERSION_MINOR})
 target_link_libraries(artic PUBLIC libartic)
 
-if (TARGET artic-lsp)
-    target_link_libraries(artic PUBLIC artic-lsp)
-    set_target_properties(artic PROPERTIES LINK_FLAGS "-static-libgcc -static-libstdc++")
-    target_compile_definitions(artic PUBLIC -DENABLE_LSP)
-endif()
-
 if (Thorin_HAS_JSON_SUPPORT)
     target_compile_definitions(artic PUBLIC -DENABLE_JSON)
     if (NOT TARGET nlohmann_json)
