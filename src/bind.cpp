@@ -1,6 +1,6 @@
 #include "artic/bind.h"
 #include "artic/ast.h"
-
+#include <filesystem>
 
 
 namespace artic {
@@ -59,11 +59,21 @@ Decl NameMap::find_decl(Ref ref) const {
     return nullptr;
 }
 
+
 Decl NameMap::find_decl_at(const Loc& loc) const {
     if (!loc.file) return nullptr;
     auto file = files.find(*loc.file);
-    if (file == files.end()) return nullptr;
+    // log::info("looking in file {} {}", *loc.file, file == files.end());
+    // log::info("file as path {}", std::filesystem::path(*loc.file));
+    if (file == files.end()) {
+        // for (auto& [k, v]: files) {
+        //     log::info("file cache: {}", k);
+        //     log::info("file as path {}", std::filesystem::path(k));
+        // }
+        return nullptr;
+    }
     for (auto& [def, ref] : file->second.references_of) {
+        // log::info("checking {} {} --- {}", def->id.name, def->id.loc, loc);
         // Note: Does duplicate checks as this is a multi map. However, the check should be fast enough
         if (contains(def->id.loc, loc, false)) return def;
     }
