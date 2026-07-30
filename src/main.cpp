@@ -9,10 +9,6 @@
 #include "artic/emit.h"
 #include "artic/locator.h"
 
-#ifdef ENABLE_LSP
-#include "server.h"
-#endif
-
 #include <thorin/world.h>
 #include <thorin/be/codegen.h>
 #include <thorin/be/c/c.h>
@@ -44,7 +40,6 @@ static void usage() {
                 "Options:\n"
                 "  -h     --help                 Display this information\n"
                 "         --version              Display version information\n"
-                "         --lsp                  Start language server mode\n"
                 "         --no-color             Disable colored output\n"
                 "         --print-ast            Print the AST after type checking\n"
                 "         --show-implicit-casts  Show implicit casts in printed AST\n"
@@ -102,7 +97,6 @@ struct ProgramOptions {
     std::vector<std::string> files;
     std::string module_name;
     bool exit = false;
-    bool lsp_mode = false;
     bool no_color = false;
     bool warns_as_errors = false;
     bool enable_all_warns = false;
@@ -157,14 +151,6 @@ struct ProgramOptions {
                     version();
                     exit = true;
                     return true;
-                } else if (matches(argv[i], "--lsp") || matches(argv[i], "--stdio")) {
-                    // TODO vscode likes to call artic with the arg --stdio. Try to remove that.
-#ifdef ENABLE_LSP
-                    lsp_mode = true;
-#else
-                    log::error("artic was built without LSP support");
-                    return false;
-#endif
                 } else if (matches(argv[i], "--no-color")) {
                     no_color = true;
                 } else if (matches(argv[i], "-Wall", "--enable-all-warnings")) {
@@ -267,7 +253,7 @@ struct ProgramOptions {
                         return false;
                     module_name = argv[++i];
                 } else {
-                    log::error("unknown option lmao '{}'", argv[i]);
+                    log::error("unknown option '{}'", argv[i]);
                     return false;
                 }
             } else
@@ -311,19 +297,6 @@ int main(int argc, char** argv) {
         return EXIT_FAILURE;
     if (opts.exit)
         return EXIT_SUCCESS;
-
-#ifdef ENABLE_LSP
-    // Handle LSP mode
-    if (opts.lsp_mode) {
-        try {
-            artic::ls::Server server;
-            return server.run();
-        } catch (const std::exception& e) {
-            log::error("LSP server error: {}", e.what());
-            return EXIT_FAILURE;
-        }
-    }
-#endif
 
     if (opts.no_color)
         log::err.colorized = log::out.colorized = false;
