@@ -5,7 +5,6 @@
 #include <optional>
 
 #include "artic/ast.h"
-#include "artic/loc.h"
 #include "artic/types.h"
 #include "artic/log.h"
 #include "artic/array.h"
@@ -16,16 +15,13 @@ namespace artic {
 /// Utility class to perform bidirectional type checking.
 class TypeChecker : public Logger {
 public:
-#ifdef ENABLE_LSP
-    TypeChecker(Log& log, TypeTable& type_table, Arena& arena, ls::NameMap* name_map = nullptr)
-        : Logger(log), type_table(type_table), _arena(arena), name_map(name_map)
-    {}
-
-    ls::NameMap* name_map;
-#else
     TypeChecker(Log& log, TypeTable& type_table, Arena& arena)
         : Logger(log), type_table(type_table), _arena(arena)
     {}
+
+#ifdef ENABLE_LSP
+    /// Set by the language server to collect declarations and references while type checking.
+    ls::NameMap* name_map = nullptr;
 #endif
 
     TypeTable& type_table;

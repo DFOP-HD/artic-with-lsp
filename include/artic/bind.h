@@ -1,10 +1,8 @@
 #ifndef ARTIC_BIND_H
 #define ARTIC_BIND_H
 
-#include <optional>
 #include <unordered_map>
 #include <string_view>
-#include <variant>
 #include <vector>
 #include <algorithm>
 
@@ -18,17 +16,6 @@ namespace artic {
 /// Binds identifiers to the nodes of the AST.
 class NameBinder : public Logger {
 public:
-#ifdef ENABLE_LSP
-    NameBinder(Log& log, ls::NameMap* lsp = nullptr)
-        : Logger(log)
-        , name_map(lsp)
-        , cur_fn(nullptr)
-        , cur_loop(nullptr)
-        , cur_mod(nullptr)
-    {
-        push_scope(true);
-    }
-#else
     NameBinder(Log& log)
         : Logger(log)
         , cur_fn(nullptr)
@@ -37,12 +24,12 @@ public:
     {
         push_scope(true);
     }
-#endif
 
     ~NameBinder() { pop_scope(nullptr); }
 
 #ifdef ENABLE_LSP
-    ls::NameMap* name_map;
+    /// Set by the language server to collect declarations and references while binding.
+    ls::NameMap* name_map = nullptr;
 #endif
 
     /// Performs name binding on a whole program.

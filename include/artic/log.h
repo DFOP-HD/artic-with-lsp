@@ -32,6 +32,8 @@
 #ifdef ENABLE_LSP
 #include <sstream>
 #include <vector>
+
+#include "artic/lsp.h"
 #endif
 
 namespace artic {
@@ -190,49 +192,12 @@ void info(const char* fmt, Args&&... args) {
 
 } // namespace log
 
-#ifdef ENABLE_LSP
-namespace ls {
-
-struct Diagnostic {
-    enum Severity { Error, Warning, Info, Hint };
-
-    Diagnostic(Severity severity, const std::string& message, const Loc& loc)
-        : loc(loc), message(message), severity(severity)
-    {}
-
-    template <typename... Args>
-    static Diagnostic format(Diagnostic::Severity severity, const Loc& loc, const char* fmt, Args&&... args) {
-        std::stringbuf buf; 
-        std::ostream str(&buf);
-        log::Output o(str, false);
-        log::format(o, fmt, std::forward<Args>(args)...);
-        return Diagnostic(
-            severity,
-            buf.str(),
-            loc
-        );
-    }
-
-    std::string message;
-    Loc loc;
-    Severity severity;
-};
-
-} // namespace ls
-#endif // ENABLE_LSP
-
 class Locator;
 
 struct Log {
-#ifdef ENABLE_LSP
-    Log(log::Output& out, Locator* locator = nullptr, size_t errors = 0, size_t warns = 0, std::vector<ls::Diagnostic>* diagnostics = nullptr)
-        : out(out), locator(locator), errors(errors), warns(warns), diagnostics(diagnostics)
-    {}
-#else
     Log(log::Output& out, Locator* locator = nullptr, size_t errors = 0, size_t warns = 0)
         : out(out), locator(locator), errors(errors), warns(warns)
     {}
-#endif
 
     bool is_full() const {
         return max_errors > 0 && errors >= max_errors;
@@ -246,7 +211,8 @@ struct Log {
     size_t errors;
     size_t warns;
 #ifdef ENABLE_LSP
-    std::vector<ls::Diagnostic>* diagnostics;
+    /// Set by the language server to collect everything reported through `Logger`.
+    std::vector<ls::Diagnostic>* diagnostics = nullptr;
 #endif
 };
 
@@ -262,12 +228,25 @@ struct Logger {
         : log(log) , warns_as_errors(warns_as_errors), diagnostics(diagnostics)
     {}
 
+#ifdef ENABLE_LSP
+    /// Hand a diagnostic to the language server, if one is listening.
+    template <typename... Args>
+    void record(ls::Severity severity, const Loc& loc, const char* fmt, Args&&... args) {
+        if (!log.diagnostics)
+            return;
+        std::stringbuf buf;
+        std::ostream stream(&buf);
+        log::Output out(stream, false);
+        log::format(out, fmt, std::forward<Args>(args)...);
+        log.diagnostics->push_back({ loc, buf.str(), severity });
+    }
+#endif
+
     /// Report an error at the given location in a source file.
     template <typename... Args>
     void error(const Loc& loc, const char* fmt, Args&&... args) {
 #ifdef ENABLE_LSP
-        if (log.diagnostics)
-            log.diagnostics->push_back(ls::Diagnostic::format(ls::Diagnostic::Error, loc, fmt, std::forward<Args>(args)...));
+        record(ls::Severity::Error, loc, fmt, std::forward<Args>(args)...);
 #endif
         if (!log.is_full()) {
             error(fmt, std::forward<Args>(args)...);
@@ -284,8 +263,7 @@ struct Logger {
             return;
         }
 #ifdef ENABLE_LSP
-        if (log.diagnostics)
-            log.diagnostics->push_back(ls::Diagnostic::format(ls::Diagnostic::Warning, loc, fmt, std::forward<Args>(args)...));
+        record(ls::Severity::Warning, loc, fmt, std::forward<Args>(args)...);
 #endif
         if (!log.is_full()) {
             warn(fmt, std::forward<Args>(args)...);
@@ -298,8 +276,7 @@ struct Logger {
     template <typename... Args>
     void note(const Loc& loc, const char* fmt, Args&&... args) {
 #ifdef ENABLE_LSP
-        if (log.diagnostics)
-            log.diagnostics->push_back(ls::Diagnostic::format(ls::Diagnostic::Info, loc, fmt, std::forward<Args>(args)...));
+        record(ls::Severity::Info, loc, fmt, std::forward<Args>(args)...);
 #endif
         if (!log.is_full()) {
             note(fmt, std::forward<Args>(args)...);

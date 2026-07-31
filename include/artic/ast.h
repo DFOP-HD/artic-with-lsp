@@ -1589,7 +1589,7 @@ struct TypeDecl : public NamedDecl {
     const thorin::Def* emit(Emitter&) const override;
     const artic::Type* infer(TypeChecker&) override;
     void bind_head(NameBinder&) override;
-    void bind(NameBinder&) override; 
+    void bind(NameBinder&) override;
     void resolve_summons(Summoner&) override {};
     void print(Printer&) const override;
     void traverse_children(const TraverseFn& fn) const override { fn(type_params); fn(aliased_type); }
@@ -1599,6 +1599,8 @@ struct TypeDecl : public NamedDecl {
 struct ModDecl : public NamedDecl {
     PtrVector<Decl> decls;
     ModDecl* super = nullptr;
+
+    std::vector<const NamedDecl*> members;
 
     /// Constructor for the implicitly defined global module.
     /// When using this constructor, the user is responsible for calling

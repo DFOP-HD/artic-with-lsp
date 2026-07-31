@@ -8,6 +8,7 @@ add_library(libartic
     ../include/artic/loc.h
     ../include/artic/locator.h
     ../include/artic/log.h
+    ../include/artic/lsp.h
     ../include/artic/name_map.h
     ../include/artic/parser.h
     ../include/artic/print.h

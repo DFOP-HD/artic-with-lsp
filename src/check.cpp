@@ -1439,7 +1439,7 @@ const artic::Type* ContinueExpr::infer(TypeChecker& checker) {
         if (!domain)
             return checker.cannot_infer(loc, "continue expression");
     } else
-        return checker.cannot_infer(loc, "break expression");
+        return checker.cannot_infer(loc, "continue expression");
     return checker.type_table.cn_type(domain);
 }
 
