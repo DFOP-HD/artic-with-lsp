@@ -1,117 +1,7 @@
 #include "artic/bind.h"
 #include "artic/ast.h"
-#include <filesystem>
-
 
 namespace artic {
-
-namespace ls {
-
-bool contains(const Loc& loc, const Loc& cursor, bool multiline_check){
-    if (loc.begin.row == loc.end.row) multiline_check = false;
-    if (multiline_check) {
-        if (cursor.begin.row < loc.begin.row || cursor.end.row > loc.end.row) return false;
-        return true;
-    } else {
-        if (cursor.begin.row != loc.begin.row || cursor.begin.col < loc.begin.col) return false;
-        if (cursor.end.row   != loc.end.row   || cursor.end.col > loc.end.col) return false;
-        return true;
-    }
-}
-using Ref = NameMap::Ref;
-using Decl = NameMap::Decl;
-void NameMap::add_type_hint(const ast::Node& node) {
-    if (!node.loc.file) return;
-    files[*node.loc.file].with_type_hint.push_back(&node);
-}
-
-void NameMap::insert(Decl decl, Ref ref) {
-    if (!decl || !decl->id.loc.file) return;
-    if (std::visit([](auto&& ref) { return ref == nullptr; }, ref)) return;
-
-    files[*get_identifier(ref).loc.file].declaration_of[ref] = decl;
-    files[*decl->id.loc.file].references_of[decl].push_back(ref);
-}
-
-void NameMap::insert(Decl decl) {
-    if (!decl || !decl->id.loc.file) return;
-    files[*decl->id.loc.file].references_of.emplace(decl, std::vector<Ref>{});
-}
-
-const std::vector<Ref>& NameMap::find_refs(Decl decl) const{
-    static const std::vector<Ref> empty;
-    if (!decl) return empty;
-    if (auto names = files.find(*decl->loc.file); names != files.end()) {
-        if (auto def = names->second.references_of.find(decl); def != names->second.references_of.end()) {
-            return def->second;
-        }
-    }
-    return empty;
-}
-
-Decl NameMap::find_decl(Ref ref) const {
-    auto id = get_identifier(ref);
-    if (auto names = files.find(*id.loc.file); names != files.end()) {
-        if (auto def = names->second.declaration_of.find(ref); def != names->second.declaration_of.end()){
-            return def->second;
-        }
-    }
-    return nullptr;
-}
-
-
-Decl NameMap::find_decl_at(const Loc& loc) const {
-    if (!loc.file) return nullptr;
-    auto file = files.find(*loc.file);
-    // log::info("looking in file {} {}", *loc.file, file == files.end());
-    // log::info("file as path {}", std::filesystem::path(*loc.file));
-    if (file == files.end()) {
-        // for (auto& [k, v]: files) {
-        //     log::info("file cache: {}", k);
-        //     log::info("file as path {}", std::filesystem::path(k));
-        // }
-        return nullptr;
-    }
-    for (auto& [def, ref] : file->second.references_of) {
-        // log::info("checking {} {} --- {}", def->id.name, def->id.loc, loc);
-        // Note: Does duplicate checks as this is a multi map. However, the check should be fast enough
-        if (contains(def->id.loc, loc, false)) return def;
-    }
-    return nullptr;
-}
-
-std::optional<Ref> NameMap::find_ref_at(const Loc& loc) const {
-    if (!loc.file) return std::nullopt;
-    auto file = files.find(*loc.file);
-    if (file == files.end()) return std::nullopt;
-    for (auto& [ref, decl] : file->second.declaration_of) {
-        auto id = get_identifier(ref);
-        if (contains(id.loc, loc, false)) return ref;
-    }
-    return std::nullopt;
-}
-
-const ast::Identifier& NameMap::get_identifier(Ref ref) const {
-    return std::visit([](auto&& ref) -> const ast::Identifier& {
-        using T = std::decay_t<decltype(ref)>;
-        if constexpr (std::is_same_v<T, const ast::Identifier*>)
-            return *ref;
-        if constexpr (std::is_same_v<T, const ast::Path*>)
-            return ref->elems.front().id;
-        else if constexpr (std::is_same_v<T, const ast::Path::Elem*>)
-            return ref->id;
-        else if constexpr (std::is_same_v<T, const ast::ProjExpr*>) {
-            if (std::holds_alternative<ast::Identifier>(ref->field))
-                return std::get<ast::Identifier>(ref->field);
-            else
-                assert(false && "tuple indices are not supported for go-to-definition");
-        }
-        assert(false && "unhandled variant type");
-        exit(1);
-    }, ref);
-}
-
-} // namespace ls
 
 bool NameBinder::run(ast::ModDecl& mod) {
     bind(mod);
@@ -129,13 +19,16 @@ void NameBinder::bind(ast::Node& node) {
 }
 
 void NameBinder::pop_scope(ast::Node* current_node) {
-    bool is_function_without_body = false;
-    if (current_node)
-        if (auto fn = current_node->isa<ast::FnDecl>(); !fn || !fn->fn->body)
-            is_function_without_body = true;
+    // A function prototype binds its parameters without ever having a body to use them in,
+    // so warning about them would be pointless. Note this must not trigger for any other
+    // kind of scope, or unused identifiers stop being reported entirely.
+    bool is_fn_prototype = false;
+    if (current_node) {
+        if (auto fn = current_node->isa<ast::FnDecl>())
+            is_fn_prototype = !fn->fn->body;
+    }
 
-
-    if (!is_function_without_body) {
+    if (!is_fn_prototype) {
         for (auto& pair : scopes_.back().symbols) {
             auto decl = pair.second.decl;
             if (pair.second.use_count == 0 &&
@@ -169,7 +62,9 @@ void NameBinder::insert_symbol(ast::NamedDecl& decl, const std::string& name) {
         }
     }
 
+#ifdef ENABLE_LSP
     if (name_map) name_map->insert(&decl);
+#endif
 }
 
 namespace ast {
@@ -193,7 +88,9 @@ void Path::bind(NameBinder& binder) {
                 binder.note("did you mean '{}'?", similar->decl->id.name);
         } else {
             start_decl = symbol->decl;
+#ifdef ENABLE_LSP
             if (binder.name_map) binder.name_map->insert(start_decl, &first.id);
+#endif
         }
     }
 
@@ -529,7 +426,7 @@ void StaticDecl::bind_head(NameBinder& binder) {
     if (pre_symbol) {
         auto pre_decl = pre_symbol->decl;
 
-        if (!pre_decl->isa<StaticDecl>()) {
+        if(!pre_decl->isa<StaticDecl>()) {
             binder.error(loc, "identifier '{}' already declared", this->id.name);
             binder.note(pre_decl->loc, "previously declared here");
             return;
@@ -537,7 +434,7 @@ void StaticDecl::bind_head(NameBinder& binder) {
         auto pre_static = pre_decl->as<StaticDecl>();
 
         if (init) {
-            if (pre_static->init) {
+            if(pre_static->init) {
                 binder.error(loc, "overwriting init of '{}'", this->id.name);
                 binder.note(pre_decl->loc, "previously declared here");
             }
@@ -593,7 +490,9 @@ void FieldDecl::bind(NameBinder& binder) {
     binder.bind(*type);
     if (init)
         binder.bind(*init);
+#ifdef ENABLE_LSP
     if (binder.name_map) binder.name_map->insert(this);
+#endif
 }
 
 void StructDecl::bind_head(NameBinder& binder) {

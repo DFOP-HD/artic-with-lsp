@@ -35,25 +35,24 @@ static std::string_view file_without_ext(std::string_view path) {
 }
 
 static void usage() {
-    log::out <<
-                "Usage: artic [options] file...\n"
-                "Options:\n"
-                "  -h     --help                 Display this information\n"
-                "         --version              Display version information\n"
-                "         --no-color             Disable colored output\n"
-                "         --print-ast            Print the AST after type checking\n"
-                "         --show-implicit-casts  Show implicit casts in printed AST\n"
-                "  -Wall  --enable-all-warnings  Enable all warnings\n"
-                "  -Werror --warnings-as-errors  Treat warnings as errors\n"
-                "         --max-errors <n>       Stop after <n> errors (defaults to no limit)\n"
-                "         --emit-thorin          Emit Thorin IR in the output file\n"
-                "         --emit-c-interface     Emit C header file for exported functions\n"
-                "         --host-triple <name>   Target triple for host code generation (defaults to the native target)\n"
-                "         --host-cpu <name>      Target CPU for host code generation (defaults to the native CPU)\n"
-                "         --host-attr <attrs>    Target attributes for host code generation\n"
-                "         --hls-flags <flags>    Flags to pass to the HLS tool (for the HLS backend)\n"
+    log::out << "usage: artic [options] files...\n"
+                "options:\n"
+                "  -h     --help                 Displays this message\n"
+                "         --version              Displays the version number\n"
+                "         --no-color             Disables colors in messages\n"
+                " -Wall   --enable-all-warnings  Enables all warnings\n"
+                " -Werror --warnings-as-errors   Treat warnings as errors\n"
+                "         --max-errors <n>       Sets the maximum number of error messages (unlimited by default)\n"
+                "         --print-ast            Prints the AST after parsing and type-checking\n"
+                "         --show-implicit-casts  Shows implicit casts as comments when printing the AST\n"
+                "         --emit-thorin          Prints the Thorin IR after code generation\n"
+                "         --emit-c-interface     Emits C interface for exported functions and imported types\n"
+                "         --host-triple <name>   Sets the target triple for host code generation (defaults to the native target)\n"
+                "         --host-cpu <name>      Sets the target CPU for host code generation (defaults to the native CPU)\n"
+                "         --host-attr <attrs>    Sets the target attributes for host code generation\n"
+                "         --hls-flags <flags>    Sets the flags passed to the HLS tool (for the HLS backend)\n"
 #ifdef ENABLE_JSON
-                "         --emit-json            Emit JSON file for device code\n"
+                "         --emit-json            Emits a JSON file for device code\n"
 #endif
                 "         --log-level <lvl>      Changes the log level in Thorin (lvl = debug, verbose, info, warn, or error, defaults to error)\n"
                 "         --tab-width <n>        Sets the width of the TAB character in error messages or when printing the AST (in spaces, defaults to 2)\n"
@@ -63,7 +62,8 @@ static void usage() {
 #endif
                 "  -g     --debug                Enable debug information in the output file\n"
                 "  -On                           Sets the optimization level (n = 0, 1, 2, or 3, defaults to 0)\n"
-                "  -o <name>                     Sets the module name (defaults to the first file name without its extension)\n";
+                "  -o <name>                     Sets the module name (defaults to the first file name without its extension)\n"
+                ;
 }
 
 static void version() {

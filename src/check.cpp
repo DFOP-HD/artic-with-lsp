@@ -366,7 +366,9 @@ void TypeChecker::check_fields(
         seen[*index] = true;
         fields[i]->index = *index;
         check(*fields[i], member_type(type_app, struct_type, *index));
-        if(name_map) name_map->insert(struct_type->decl.fields[*index].get(), &fields[i]->id);
+#ifdef ENABLE_LSP
+        if (name_map) name_map->insert(struct_type->decl.fields[*index].get(), &fields[i]->id);
+#endif
     }
     // Check that all fields have been specified, unless '...' was used
     if (!has_etc && !std::all_of(seen.begin(), seen.end(), [] (bool b) { return b; })) {
@@ -694,7 +696,8 @@ const artic::Type* Path::infer(TypeChecker& checker, bool value_expected, Ptr<Ex
 
         // Perform a lookup inside the current object if the path is not finished
         if (i != n - 1) {
-            const NamedDecl* name_map_decl = nullptr;
+            // Only consumed by the language server.
+            [[maybe_unused]] const NamedDecl* name_map_decl = nullptr;
 
             if (elems[i + 1].is_super()) {
                 auto mod_type = type->isa<ModType>();
@@ -740,9 +743,10 @@ const artic::Type* Path::infer(TypeChecker& checker, bool value_expected, Ptr<Ex
             } else
                 return checker.type_expected(elem.loc, type, "module or enum");
 
-            if(checker.name_map && name_map_decl) {
-                checker.name_map->insert(name_map_decl, &elems[i+1]);
-            }
+#ifdef ENABLE_LSP
+            if (checker.name_map && name_map_decl)
+                checker.name_map->insert(name_map_decl, &elems[i + 1]);
+#endif
         }
     }
 
@@ -1258,12 +1262,14 @@ const artic::Type* ProjExpr::infer(TypeChecker& checker) {
         if (auto index = struct_type->find_member(field_name)) {
             this->index = *index;
             result_type = member_type(type_app, struct_type, *index);
+#ifdef ENABLE_LSP
             // Register name for lsp
-            if(checker.name_map) {
+            if (checker.name_map) {
                 auto field_decl = struct_type->decl.fields.at(*index).get();
                 auto* decl = dynamic_cast<const ast::NamedDecl*>(field_decl);
                 checker.name_map->insert(decl, this);
             }
+#endif
         } else
             return checker.unknown_member(loc, struct_type, field_name);
     } else {
@@ -1721,9 +1727,10 @@ const artic::Type* LetDecl::infer(TypeChecker& checker) {
     else
         t = checker.infer(*ptrn);
 
-    if(checker.name_map && ptrn->isa<IdPtrn>()) {
+#ifdef ENABLE_LSP
+    if (checker.name_map && ptrn->isa<IdPtrn>())
         checker.name_map->add_type_hint(*ptrn);
-    }
+#endif
 
     checker.check_refutability(*ptrn, true);
     return checker.type_table.unit_type();
@@ -1762,12 +1769,8 @@ const artic::Type* StaticDecl::infer(TypeChecker& checker) {
         }
     }
     checker.exit_decl(this);
-    // TODO can't add type hint here because there is no `Node` but rather just an identifier, 
-    // so we cant place it behind the identifier
-    // -> need to change add_type_hint to accept (identifier, type)?
-    // if(checker.name_map) {
-    //     checker.name_map->add_type_hint(*this);
-    // }
+    // TODO no type hint here: a StaticDecl exposes only an identifier, not a `Node`, so the
+    // hint cannot be placed after it. Would require add_type_hint(identifier, type).
     return checker.type_table.ref_type(value_type, is_mut, 0);
 }
 

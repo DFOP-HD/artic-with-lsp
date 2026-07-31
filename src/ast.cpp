@@ -448,8 +448,8 @@ bool BlockExpr::has_side_effect() const {
 }
 
 bool CallExpr::is_jumping() const {
-    if(!type) return false; 
-    assert(type); // TODO this actually happens with a broken statement like `let a = return(;`
+    // A call can reach this without a type when an earlier stage failed, e.g. `let a = return(;`.
+    if (!type) return false;
     return type->isa<artic::NoRetType>();
 }
 

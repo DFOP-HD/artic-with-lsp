@@ -26,7 +26,11 @@ struct Printer {
     std::string tab;    ///< String used as tabulation symbol
 
     bool show_implicit_casts = false;
+#ifdef ENABLE_LSP
+    /// Wraps every printed node in `<NodeName>` tags. Used by the language server's
+    /// AST dump; the standalone compiler has no way to turn it on.
     bool print_additional_node_info = false;
+#endif
 
     Printer(log::Output& out, const std::string& tab = "    ")
         : out(out), tab(tab)

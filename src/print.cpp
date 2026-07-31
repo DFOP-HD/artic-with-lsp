@@ -33,17 +33,21 @@ struct NodeScope {
     std::string name;
     int indent;
     NodeScope(Printer& p, std::string_view name) : p(p), name(name) {
+#ifdef ENABLE_LSP
         if(!p.print_additional_node_info) return;
         p << p.endl();
         indent = p.level++;
         p << "<" << name << ">";
         p << p.endl();
+#endif
     }
     ~NodeScope() {
+#ifdef ENABLE_LSP
         if(!p.print_additional_node_info) return;
         p.level = indent;
         p << p.endl();
         p << "</" << name << ">";
+#endif
     }
 };
 

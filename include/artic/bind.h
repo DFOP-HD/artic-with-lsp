@@ -11,45 +11,14 @@
 #include "artic/symbol.h"
 #include "artic/ast.h"
 #include "artic/log.h"
+#include "artic/name_map.h"
 
 namespace artic {
-
-namespace ls {
-
-/// Stores information related to LSP go-to-definiton & find-references
-class NameMap {
-public:
-    using Decl = const ast::NamedDecl*;
-    using Ref = std::variant<const ast::Identifier* /* used for ast::FieldExpr and ast::FieldPtrn */, 
-                             const ast::Path*, const ast::Path::Elem*, 
-                             const ast::ProjExpr*>;
-
-    void insert(Decl decl, Ref ref);
-    void insert(Decl def);
-    void add_type_hint(const ast::Node& node);
-
-    const std::vector<Ref>& find_refs(Decl decl) const;
-    Decl find_decl(Ref ref) const;
-
-    Decl find_decl_at(const Loc& loc) const;
-    std::optional<Ref> find_ref_at(const Loc& loc) const;
-
-    const ast::Identifier& get_identifier(Ref ref) const;
-
-    struct Names {
-        std::unordered_map<Ref, Decl> declaration_of;
-        std::unordered_map<Decl, std::vector<Ref>> references_of;
-        std::vector<const ast::Node*> with_type_hint;
-    };
-    std::unordered_map<std::string, Names> files;
-};    
-
-} // namespace ls
-
 
 /// Binds identifiers to the nodes of the AST.
 class NameBinder : public Logger {
 public:
+#ifdef ENABLE_LSP
     NameBinder(Log& log, ls::NameMap* lsp = nullptr)
         : Logger(log)
         , name_map(lsp)
@@ -59,10 +28,22 @@ public:
     {
         push_scope(true);
     }
+#else
+    NameBinder(Log& log)
+        : Logger(log)
+        , cur_fn(nullptr)
+        , cur_loop(nullptr)
+        , cur_mod(nullptr)
+    {
+        push_scope(true);
+    }
+#endif
 
     ~NameBinder() { pop_scope(nullptr); }
 
+#ifdef ENABLE_LSP
     ls::NameMap* name_map;
+#endif
 
     /// Performs name binding on a whole program.
     /// Returns true on success, otherwise false.

@@ -27,7 +27,8 @@ struct Hash {
 
     Hash& combine(const std::string_view& s) { return combine(s.data(), (s.size() * CHAR_BIT) / 8); }
 
-    template <typename T, std::enable_if_t<std::is_pod<T>::value, int> = 0>
+    // std::is_pod is deprecated since C++20; this is its definition.
+    template <typename T, std::enable_if_t<std::is_standard_layout_v<T> && std::is_trivial_v<T>, int> = 0>
     Hash& combine(const T& t) { return combine(&t, (sizeof(T) * CHAR_BIT) / 8); }
 
     template <typename T>

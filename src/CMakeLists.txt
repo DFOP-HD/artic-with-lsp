@@ -8,6 +8,7 @@ add_library(libartic
     ../include/artic/loc.h
     ../include/artic/locator.h
     ../include/artic/log.h
+    ../include/artic/name_map.h
     ../include/artic/parser.h
     ../include/artic/print.h
     ../include/artic/summoner.h
@@ -21,6 +22,7 @@ add_library(libartic
     emit.cpp
     lexer.cpp
     log.cpp
+    name_map.cpp
     parser.cpp
     print.cpp
     summoner.cpp
@@ -33,11 +35,6 @@ target_include_directories(libartic PUBLIC ${Thorin_INCLUDE_DIRS} ../include)
 target_compile_definitions(libartic PRIVATE -DARTIC_EXPORT)
 if (${COLORIZE})
     target_compile_definitions(libartic PUBLIC -DCOLORIZE)
-endif()
-if (MSVC)
-    target_compile_options(libartic PRIVATE /wd4996)
-else()
-    target_compile_options(libartic PRIVATE -Wno-deprecated-declarations)
 endif()
 
 if (TARGET artic-lsp)

@@ -109,7 +109,6 @@ Ptr<ast::FnDecl> Parser::parse_fn_decl() {
     }
 
     auto fn = _arena.make_ptr<ast::FnExpr>(tracker(), std::move(filter), std::move(param), std::move(ret_type), std::move(body));
-    // fn->dump();
     return _arena.make_ptr<ast::FnDecl>(tracker(), std::move(id), std::move(fn), std::move(type_params));
 }
 

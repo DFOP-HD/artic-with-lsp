@@ -209,9 +209,9 @@ Token Lexer::next() {
 
         append();
         error(loc_, "unknown token '{}'", str_);
-        // Note TG: continue instead of returning error token to improve error tolerance
-        continue; 
-        // return Token(loc_);
+        // Keep lexing instead of returning an error token: a single stray character must not
+        // truncate the token stream, or every later stage sees a file that ends there.
+        continue;
     }
 }
 

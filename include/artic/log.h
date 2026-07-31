@@ -5,7 +5,7 @@
 #include <cstring>
 #include <cassert>
 #include <utility>
-#include <sstream>
+#include <string_view>
 
 #ifdef COLORIZE
     #ifdef _WIN32
@@ -28,7 +28,11 @@
 #endif
 
 #include "artic/loc.h"
+
+#ifdef ENABLE_LSP
+#include <sstream>
 #include <vector>
+#endif
 
 namespace artic {
 
@@ -175,15 +179,18 @@ void error(const char* fmt, Args&&... args) {
     err.stream << std::endl;
 }
 
+#ifdef ENABLE_LSP
 template <typename... Args>
 void info(const char* fmt, Args&&... args) {
     Output log(std::clog, false);
     log::format(log, fmt, std::forward<Args>(args)...);
     log.stream << std::endl;
 }
+#endif
 
 } // namespace log
 
+#ifdef ENABLE_LSP
 namespace ls {
 
 struct Diagnostic {
@@ -212,13 +219,20 @@ struct Diagnostic {
 };
 
 } // namespace ls
+#endif // ENABLE_LSP
 
 class Locator;
 
 struct Log {
+#ifdef ENABLE_LSP
     Log(log::Output& out, Locator* locator = nullptr, size_t errors = 0, size_t warns = 0, std::vector<ls::Diagnostic>* diagnostics = nullptr)
         : out(out), locator(locator), errors(errors), warns(warns), diagnostics(diagnostics)
     {}
+#else
+    Log(log::Output& out, Locator* locator = nullptr, size_t errors = 0, size_t warns = 0)
+        : out(out), locator(locator), errors(errors), warns(warns)
+    {}
+#endif
 
     bool is_full() const {
         return max_errors > 0 && errors >= max_errors;
@@ -231,7 +245,9 @@ struct Log {
     size_t max_errors = 0;
     size_t errors;
     size_t warns;
+#ifdef ENABLE_LSP
     std::vector<ls::Diagnostic>* diagnostics;
+#endif
 };
 
 /// Base class for objects that have a log attached to them.
@@ -249,9 +265,10 @@ struct Logger {
     /// Report an error at the given location in a source file.
     template <typename... Args>
     void error(const Loc& loc, const char* fmt, Args&&... args) {
-        if(log.diagnostics) 
+#ifdef ENABLE_LSP
+        if (log.diagnostics)
             log.diagnostics->push_back(ls::Diagnostic::format(ls::Diagnostic::Error, loc, fmt, std::forward<Args>(args)...));
-
+#endif
         if (!log.is_full()) {
             error(fmt, std::forward<Args>(args)...);
             diagnostic(loc, log::Style::Red, '^');
@@ -262,14 +279,14 @@ struct Logger {
     /// Report a warning at the given location in a source file.
     template <typename... Args>
     void warn(const Loc& loc, const char* fmt, Args&&... args) {
-        if (warns_as_errors){
+        if (warns_as_errors) {
             error(loc, fmt, std::forward<Args>(args)...);
             return;
         }
-
-        if (log.diagnostics) 
+#ifdef ENABLE_LSP
+        if (log.diagnostics)
             log.diagnostics->push_back(ls::Diagnostic::format(ls::Diagnostic::Warning, loc, fmt, std::forward<Args>(args)...));
-
+#endif
         if (!log.is_full()) {
             warn(fmt, std::forward<Args>(args)...);
             diagnostic(loc, log::Style::Yellow, '^');
@@ -280,9 +297,10 @@ struct Logger {
     /// Display a note corresponding to a specific location in a source file.
     template <typename... Args>
     void note(const Loc& loc, const char* fmt, Args&&... args) {
-        if(log.diagnostics) 
+#ifdef ENABLE_LSP
+        if (log.diagnostics)
             log.diagnostics->push_back(ls::Diagnostic::format(ls::Diagnostic::Info, loc, fmt, std::forward<Args>(args)...));
-
+#endif
         if (!log.is_full()) {
             note(fmt, std::forward<Args>(args)...);
             diagnostic(loc, log::Style::Cyan, '-');
