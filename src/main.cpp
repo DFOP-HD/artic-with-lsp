@@ -47,6 +47,13 @@ static void usage() {
                 "         --show-implicit-casts  Shows implicit casts as comments when printing the AST\n"
                 "         --emit-thorin          Prints the Thorin IR after code generation\n"
                 "         --emit-c-interface     Emits C interface for exported functions and imported types\n"
+                "         --host-triple <name>   Sets the target triple for host code generation (defaults to the native target)\n"
+                "         --host-cpu <name>      Sets the target CPU for host code generation (defaults to the native CPU)\n"
+                "         --host-attr <attrs>    Sets the target attributes for host code generation\n"
+                "         --hls-flags <flags>    Sets the flags passed to the HLS tool (for the HLS backend)\n"
+#ifdef ENABLE_JSON
+                "         --emit-json            Emits a JSON file for device code\n"
+#endif
                 "         --log-level <lvl>      Changes the log level in Thorin (lvl = debug, verbose, info, warn, or error, defaults to error)\n"
                 "         --tab-width <n>        Sets the width of the TAB character in error messages or when printing the AST (in spaces, defaults to 2)\n"
                 "         --emit-c               Emits C code in the output file\n"
