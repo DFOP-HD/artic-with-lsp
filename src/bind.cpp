@@ -18,17 +18,8 @@ void NameBinder::bind(ast::Node& node) {
     node.bind(*this);
 }
 
-void NameBinder::pop_scope(ast::Node* current_node) {
-    // A function prototype binds its parameters without ever having a body to use them in,
-    // so warning about them would be pointless. Note this must not trigger for any other
-    // kind of scope, or unused identifiers stop being reported entirely.
-    bool is_fn_prototype = false;
-    if (current_node) {
-        if (auto fn = current_node->isa<ast::FnDecl>())
-            is_fn_prototype = !fn->fn->body;
-    }
-
-    if (!is_fn_prototype) {
+void NameBinder::pop_scope(bool report_unused) {
+    if (report_unused) {
         for (auto& pair : scopes_.back().symbols) {
             auto decl = pair.second.decl;
             if (pair.second.use_count == 0 &&
@@ -222,8 +213,8 @@ void FnExpr::bind(NameBinder& binder, bool in_for_loop) {
     if (!in_for_loop) binder.cur_fn = this;
     binder.bind(*body);
     binder.cur_fn = old_fn;
-    binder.pop_scope(this);
-    binder.pop_scope(this);
+    binder.pop_scope();
+    binder.pop_scope();
 }
 
 void FnExpr::bind(NameBinder& binder) {
@@ -237,7 +228,7 @@ void BlockExpr::bind(NameBinder& binder) {
             binder.bind_head(*decl_stmt->decl);
     }
     for (auto& stmt : stmts) binder.bind(*stmt);
-    binder.pop_scope(this);
+    binder.pop_scope();
 }
 
 void CallExpr::bind(NameBinder& binder) {
@@ -268,7 +259,7 @@ void IfExpr::bind(NameBinder& binder) {
         binder.bind(*expr);
     }
     binder.bind(*if_true);
-    binder.pop_scope(this);
+    binder.pop_scope();
     if (if_false) binder.bind(*if_false);
 }
 
@@ -276,7 +267,7 @@ void CaseExpr::bind(NameBinder& binder) {
     binder.push_scope();
     binder.bind(*ptrn);
     binder.bind(*expr);
-    binder.pop_scope(this);
+    binder.pop_scope();
 }
 
 void MatchExpr::bind(NameBinder& binder) {
@@ -297,7 +288,7 @@ void WhileExpr::bind(NameBinder& binder) {
     binder.cur_loop = this;
     binder.bind(*body);
     binder.cur_loop = old_loop;
-    binder.pop_scope(this);
+    binder.pop_scope();
 }
 
 void ForExpr::bind(NameBinder& binder) {
@@ -483,7 +474,8 @@ void FnDecl::bind(NameBinder& binder) {
         if (fn->ret_type)
             binder.bind(*fn->ret_type);
     }
-    binder.pop_scope(this);
+    // A prototype binds its parameters without ever having a body to use them in.
+    binder.pop_scope(fn->body.get() != nullptr);
 }
 
 void FieldDecl::bind(NameBinder& binder) {
@@ -503,7 +495,7 @@ void StructDecl::bind(NameBinder& binder) {
     binder.push_scope();
     if (type_params) binder.bind(*type_params);
     for (auto& field : fields) binder.bind(*field);
-    binder.pop_scope(this);
+    binder.pop_scope();
 }
 
 void OptionDecl::bind(NameBinder& binder) {
@@ -526,7 +518,7 @@ void EnumDecl::bind(NameBinder& binder) {
         option->parent = this;
         binder.bind(*option);
     }
-    binder.pop_scope(this);
+    binder.pop_scope();
 }
 
 void TypeDecl::bind_head(NameBinder& binder) {
@@ -537,7 +529,7 @@ void TypeDecl::bind(NameBinder& binder) {
     binder.push_scope();
     if (type_params) binder.bind(*type_params);
     binder.bind(*aliased_type);
-    binder.pop_scope(this);
+    binder.pop_scope();
 }
 
 void ModDecl::bind_head(NameBinder& binder) {

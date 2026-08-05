@@ -87,6 +87,12 @@ const Type* TypeChecker::invalid_simd(const Loc& loc, const Type* elem_type) {
     return type_table.type_error();
 }
 
+const Type* TypeChecker::invalid_array_size(const Loc& loc) {
+    error(loc, "expected an immutable {} declaration with an initializer as array size",
+        log::keyword_style("static"));
+    return type_table.type_error();
+}
+
 void TypeChecker::invalid_ptrn(const Loc& loc, bool must_be_trivial) {
     if (must_be_trivial) {
         error(loc, "irrefutable (always matching) pattern expected");
@@ -884,27 +890,19 @@ const artic::Type* SizedArrayType::infer(TypeChecker& checker) {
                 decl = &mod_type->member(path.elems[i + 1].index);
             } else if (!path.is_ctor) {
                 assert(path.elems[i].inferred_args.empty());
-                if(!decl->isa<StaticDecl>()) {
-                    checker.error(path.elems[i].loc, "Only static declarations are supported for array size");
-                    return checker.type_table.type_error();
-                }
+                if (!decl->isa<StaticDecl>())
+                    return checker.invalid_array_size(path.loc);
                 break;
             } else if (match_app<StructType>(path.elems[i].type).second) {
-                checker.error(path.elems[i].loc, "Only static declarations are supported for array size");
-                return checker.type_table.type_error();
+                return checker.invalid_array_size(path.loc);
             } else if (auto [type_app, enum_type] = match_app<artic::EnumType>(path.elems[i].type); enum_type) {
-                checker.error(path.elems[i].loc, "This is not supported as a size for repeated arrays.");
-                return checker.type_table.type_error();
+                return checker.invalid_array_size(path.loc);
             }
         }
-        if(auto s = decl->isa<StaticDecl>(); !s || !s->init || s->is_mut) {
-            checker.error(path.loc, "Only initialized non-mutable static declarations are supported for array size");
-            return checker.type_table.type_error();
-        }
+        auto static_decl = decl->isa<StaticDecl>();
+        if (!static_decl || static_decl->is_mut || !static_decl->init)
+            return checker.invalid_array_size(path.loc);
 
-        auto static_decl = decl->as<StaticDecl>();
-        assert(!static_decl->is_mut);
-        assert(static_decl->init);
         auto& value = static_decl->init;
         auto lit_value = value->as<LiteralExpr>()->lit;
 
@@ -1068,28 +1066,20 @@ const artic::Type* RepeatArrayExpr::infer(TypeChecker& checker) {
                 decl = &mod_type->member(path.elems[i + 1].index);
             } else if (!path.is_ctor) {
                 assert(path.elems[i].inferred_args.empty());
-                if(!decl->isa<StaticDecl>()) {
-                    checker.error(path.elems[i].loc, "Only static declarations are supported for repeated array size");
-                    return checker.type_table.type_error();
-                }
+                if (!decl->isa<StaticDecl>())
+                    return checker.invalid_array_size(path.loc);
                 break;
             } else if (match_app<StructType>(path.elems[i].type).second) {
-                checker.error(path.elems[i].loc, "Only static declarations are supported for repeated array size");
-                return checker.type_table.type_error();
+                return checker.invalid_array_size(path.loc);
             } else if (auto [type_app, enum_type] = match_app<artic::EnumType>(path.elems[i].type); enum_type) {
-                checker.error(path.elems[i].loc, "Only static declarations are supported for repeated array size");
-                return checker.type_table.type_error();
+                return checker.invalid_array_size(path.loc);
             }
         }
 
-        if(auto s = decl->isa<StaticDecl>(); !s || !s->init || s->is_mut) {
-            checker.error(path.loc, "Only initialized non-mutable static declarations are supported for repeated array size");
-            return checker.type_table.type_error();
-        }
+        auto static_decl = decl->isa<StaticDecl>();
+        if (!static_decl || static_decl->is_mut || !static_decl->init)
+            return checker.invalid_array_size(path.loc);
 
-        auto static_decl = decl->as<StaticDecl>();
-        assert(!static_decl->is_mut);
-        assert(static_decl->init);
         auto& value = static_decl->init;
         auto lit_value = value->as<LiteralExpr>()->lit;
 
@@ -1111,28 +1101,20 @@ const artic::Type* RepeatArrayExpr::check(TypeChecker& checker, const artic::Typ
                 decl = &mod_type->member(path.elems[i + 1].index);
             } else if (!path.is_ctor) {
                 assert(path.elems[i].inferred_args.empty());
-                if(!decl->isa<StaticDecl>()) {
-                    checker.error(path.elems[i].loc, "Only static declarations are supported for repeated array size");
-                    return checker.type_table.type_error();
-                }
+                if (!decl->isa<StaticDecl>())
+                    return checker.invalid_array_size(path.loc);
                 break;
             } else if (match_app<StructType>(path.elems[i].type).second) {
-                checker.error(path.elems[i].loc, "Only static declarations are supported for repeated array size");
-                return checker.type_table.type_error();
+                return checker.invalid_array_size(path.loc);
             } else if (auto [type_app, enum_type] = match_app<artic::EnumType>(path.elems[i].type); enum_type) {
-                checker.error(path.elems[i].loc, "Only static declarations are supported for repeated array size");
-                return checker.type_table.type_error();
+                return checker.invalid_array_size(path.loc);
             }
         }
 
-        if(auto s = decl->isa<StaticDecl>(); !s || !s->init || s->is_mut) {
-            checker.error(path.loc, "Only initialized non-mutable static declarations are supported for repeated array size");
-            return checker.type_table.type_error();
-        }
+        auto static_decl = decl->isa<StaticDecl>();
+        if (!static_decl || static_decl->is_mut || !static_decl->init)
+            return checker.invalid_array_size(path.loc);
 
-        auto static_decl = decl->as<StaticDecl>();
-        assert(!static_decl->is_mut);
-        assert(static_decl->init);
         auto& value = static_decl->init;
         auto lit_value = value->as<LiteralExpr>()->lit;
 

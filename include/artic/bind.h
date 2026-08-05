@@ -25,7 +25,7 @@ public:
         push_scope(true);
     }
 
-    ~NameBinder() { pop_scope(nullptr); }
+    ~NameBinder() { pop_scope(); }
 
 #ifdef ENABLE_LSP
     /// Set by the language server to collect declarations and references while binding.
@@ -46,7 +46,7 @@ public:
     void bind(ast::Node&);
 
     void push_scope(bool top_level = false) { scopes_.emplace_back(top_level); }
-    void pop_scope(ast::Node* current_node);
+    void pop_scope(bool report_unused = true);
     void insert_symbol(ast::NamedDecl&, const std::string&);
     void insert_symbol(ast::NamedDecl& decl) {
         insert_symbol(decl, decl.id.name);
